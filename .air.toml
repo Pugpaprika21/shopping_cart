@@ -1,0 +1,10 @@
+# .air.toml configuration file
+[build]
+  bin = "tmp/main.exe" # Path to output binary with .exe extension
+  cmd = "go build -o ./tmp/main.exe ./cmd/shopping-cart" # Build command
+  main = "cmd/shopping-cart/main.go" # Main file of your project
+  watch_dir = ["cmd", "internal", "pkg", "configs"] # Directories to watch for changes
+  exclude_dir = ["vendor", "tmp"] # Directories to exclude from watch
+
+[log]
+  level = "debug"

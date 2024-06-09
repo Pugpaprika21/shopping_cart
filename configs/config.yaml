@@ -1,0 +1,16 @@
+port: "8081"
+base_url: http://localhost:8081/api/
+
+database:
+  driver: pgsql
+  host: localhost
+  username: postgres
+  password: root
+  name: shopping_cart_db
+  port: "5432"
+  sslmode: prefer
+  timezone: Asia/Shanghai
+  dsn: 
+
+mongo:
+  dns: mongodb://localhost:27017
