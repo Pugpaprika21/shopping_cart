@@ -26,4 +26,6 @@ func EchoRouter(e *echo.Echo, server *server.EchoServerEnvironment) {
 	o := handler.NewOrderItemsHandler(server)
 	g.POST("/orderitems", o.SaveOrderItems)
 	g.GET("/orderitems/:userId/items", o.GetOrderItemsByUserID)
+	g.PUT("/orderitems/:userId/items", o.UpdateOrderItemsByUserID)
+	g.DELETE("/orderitems/:userId/items/:orderId", o.DeleteOrderItemsByID)
 }
