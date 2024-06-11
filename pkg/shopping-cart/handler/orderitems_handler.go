@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"fmt"
 	"net/http"
 	"time"
 
@@ -70,7 +69,7 @@ func (o *orderItemsHandler) SaveOrderItems(c echo.Context) error {
 			orderItem := models.OrderItems{
 				ProductID:       product.ProductID,
 				ProductQuantity: product.ProductQuantity,
-				UserID:          1,
+				UserID:          body.UserID,
 				UserIP:          c.RealIP(),
 				Status:          models.Pending,
 			}
@@ -143,33 +142,6 @@ func (o *orderItemsHandler) GetOrderItemsByUserID(c echo.Context) error {
 	})
 }
 
-// func (o *orderItemsHandler) SaveOrderItemsByID(c echo.Context) error {
-// 	userID := utils.UintFromString(c.Param("userId"))
-// 	orderID := utils.UintFromString(c.Param("orderId"))
-
-// 	var orderCount int64
-// 	var orderItems models.OrderItems
-// 	o.query.Model(&orderItems).Where("user_id = ? AND id = ?", userID, orderID).Count(&orderCount)
-// 	if orderCount == 0 {
-// 		return c.JSON(http.StatusBadRequest, dto.Respone{
-// 			Message:    "ไม่พบข้อมูลการสั่งซื้อของคุณ",
-// 			Statusbool: false,
-// 		})
-// 	}
-
-// 	err := o.query.Model(&orderItems).Where("user_id = ? AND id = ?", userID, orderID).Update("status", models.Completed).Error
-// 	if err != nil {
-// 		return c.JSON(http.StatusInternalServerError, dto.Respone{
-// 			Message:    err.Error(),
-// 			Statusbool: false,
-// 		})
-// 	}
-
-// 	return c.JSON(http.StatusOK, dto.Respone{
-// 		Statusbool: true,
-// 	})
-// }
-
 func (o *orderItemsHandler) UpdateOrderItemsByUserID(c echo.Context) error {
 	userID := utils.UintFromString(c.Param("userId"))
 
@@ -191,16 +163,16 @@ func (o *orderItemsHandler) UpdateOrderItemsByUserID(c echo.Context) error {
 		})
 	}
 
-	var prodcuts models.Product
-	prodcutLength := len(body.Products)
-	if prodcutLength > 0 {
+	var products models.Product
+	productLength := len(body.Products)
+	if productLength > 0 {
 		for _, product := range body.Products {
 			var currentProduct struct {
 				ID              uint
 				ProductQuantity uint
 			}
 			// ตรวจสอบจำนวนสินค้าที่มีอยู่
-			err := o.query.Model(&prodcuts).Select("id, qty AS product_quantity").Where("id = ?", product.ProductID).Scan(&currentProduct).Error
+			err := o.query.Model(&products).Select("id, qty AS product_quantity").Where("id = ?", product.ProductID).Scan(&currentProduct).Error
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, dto.Respone{
 					Message:    err.Error(),
@@ -209,21 +181,118 @@ func (o *orderItemsHandler) UpdateOrderItemsByUserID(c echo.Context) error {
 			}
 			// ตรวจสอบว่าสินค้ามีเพียงพอหรือไม่
 			if currentProduct.ProductQuantity < product.ProductQuantity {
-				// return c.JSON(http.StatusBadRequest, dto.Respone{
-				// 	Message:    "สินค้าไม่เพียงพอ",
-				// 	Statusbool: false,
-				// })
-				fmt.Println("##################################################")
-				fmt.Println(currentProduct.ID, currentProduct.ProductQuantity)
-				fmt.Println("##################################################")
-
+				return c.JSON(http.StatusBadRequest, dto.Respone{
+					Message:    "สินค้าไม่เพียงพอ",
+					Statusbool: false,
+				})
+			}
+			// ลดจำนวนสินค้าในสต็อก
+			newQuantity := currentProduct.ProductQuantity - product.ProductQuantity
+			err = o.query.Model(&products).Where("id = ?", product.ProductID).Update("qty", newQuantity).Error
+			if err != nil {
+				return c.JSON(http.StatusInternalServerError, dto.Respone{
+					Message:    err.Error(),
+					Statusbool: false,
+				})
+			}
+			// ตรวจสอบว่ามี orderItem อยู่แล้วหรือไม่
+			var existingOrderItem models.OrderItems
+			err = o.query.Model(&existingOrderItem).Where("user_id = ? AND product_id = ? AND status = ?", userID, product.ProductID, models.Pending).First(&existingOrderItem).Error
+			if err != nil {
+				if gorm.ErrRecordNotFound == err {
+					// ถ้าไม่พบ orderItem ให้เพิ่มใหม่
+					orderItem := models.OrderItems{
+						ProductID:       product.ProductID,
+						ProductQuantity: product.ProductQuantity,
+						UserID:          userID,
+						UserIP:          c.RealIP(),
+						Status:          models.Pending,
+					}
+					// บันทึกข้อมูลการสั่งซื้อ
+					if err := o.query.Create(&orderItem).Error; err != nil {
+						return c.JSON(http.StatusInternalServerError, dto.Respone{
+							Message:    err.Error(),
+							Statusbool: false,
+						})
+					}
+				} else {
+					return c.JSON(http.StatusInternalServerError, dto.Respone{
+						Message:    err.Error(),
+						Statusbool: false,
+					})
+				}
+			} else {
+				// ถ้าพบ orderItem ให้ทำการอัปเดต
+				existingOrderItem.ProductQuantity += product.ProductQuantity
+				if err := o.query.Save(&existingOrderItem).Error; err != nil {
+					return c.JSON(http.StatusInternalServerError, dto.Respone{
+						Message:    err.Error(),
+						Statusbool: false,
+					})
+				}
 			}
 		}
 	}
 
 	return c.JSON(http.StatusOK, dto.Respone{
 		Statusbool: true,
-		Data:       body.Products,
+	})
+}
+
+func (o *orderItemsHandler) UpdateOrderItemsByID(c echo.Context) error {
+	userID := utils.UintFromString(c.Param("userId"))
+	orderID := utils.UintFromString(c.Param("orderId"))
+
+	var orderCount int64
+	var orderItems []dto.OrderItemsFetchRow
+	var orderItemsModel models.OrderItems
+	o.query.Model(&orderItemsModel).Select("id").Where("id = ? AND status = ? AND user_id = ?", orderID, models.Pending, userID).Scan(&orderItems).Count(&orderCount)
+	if orderCount == 0 {
+		return c.JSON(http.StatusBadRequest, dto.Respone{
+			Message:    "ไม่พบข้อมูลการสั่งซื้อของคุณ",
+			Statusbool: false,
+		})
+	}
+
+	err := o.query.Model(&orderItemsModel).Where("id = ? AND status = ? AND user_id = ?", orderID, models.Pending, userID).Update("status", models.Completed).Error
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, dto.Respone{
+			Message:    err.Error(),
+			Statusbool: false,
+		})
+	}
+
+	return c.JSON(http.StatusOK, dto.Respone{
+		Statusbool: true,
+	})
+}
+
+func (o *orderItemsHandler) ConfirmBuyOrderItems(c echo.Context) error {
+	var body dto.OrderItemsReqBody
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, dto.Respone{
+			Message:    err.Error(),
+			Statusbool: false,
+		})
+	}
+
+	var orderCount int64
+	var orderItems []dto.OrderItemsFetchRow
+	var orderItemsModel models.OrderItems
+	o.query.Model(&orderItemsModel).Select("id").Where("status = ? AND user_id = ?", models.Pending, body.UserID).Scan(&orderItems).Count(&orderCount)
+	if orderCount == 0 {
+		return c.JSON(http.StatusBadRequest, dto.Respone{
+			Message:    "ไม่พบข้อมูลการสั่งซื้อของคุณ",
+			Statusbool: false,
+		})
+	}
+
+	for _, order := range orderItems {
+		o.query.Model(&orderItemsModel).Where("status = ? AND id = ?", models.Pending, order.ID).Update("status", models.Completed)
+	}
+
+	return c.JSON(http.StatusOK, dto.Respone{
+		Statusbool: true,
 	})
 }
 
@@ -258,8 +327,4 @@ func (o *orderItemsHandler) DeleteOrderItemsByID(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.Respone{
 		Statusbool: true,
 	})
-}
-
-func (o *orderItemsHandler) ConfirmAsSaveOrderItems(c echo.Context) error {
-	return nil
 }

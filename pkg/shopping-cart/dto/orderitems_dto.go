@@ -1,6 +1,7 @@
 package dto
 
 type OrderItemsReqBody struct {
+	UserID   uint                       `json:"user_id,omitempty"`
 	Products []OrderItemsProductReqBody `json:"products"`
 }
 
