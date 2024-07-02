@@ -70,8 +70,6 @@ func (ch *categoryHandler) SaveCategory(c echo.Context) error {
 	return c.JSON(http.StatusOK, dto.Respone{
 		Statusbool: true,
 	})
-
-	// eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 }
 
 func (ch *categoryHandler) GetCategoryByID(c echo.Context) error {
@@ -142,5 +140,3 @@ func (ch *categoryHandler) DeleteCategoryByID(c echo.Context) error {
 		Statusbool: true,
 	})
 }
-
-///////////////////////////////////////////// ddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd

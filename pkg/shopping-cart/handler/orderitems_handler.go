@@ -88,8 +88,6 @@ func (o *orderItemsHandler) SaveOrderItems(c echo.Context) error {
 	})
 }
 
-// ---------------------------- sssssssssssssssssssssssssssssssssss ------------------------------ //
-
 func (o *orderItemsHandler) GetOrderItemsByUserID(c echo.Context) error {
 	userID := utils.UintFromString(c.Param("userId"))
 	orderStatus := c.QueryParam("order_status")
@@ -111,8 +109,6 @@ func (o *orderItemsHandler) GetOrderItemsByUserID(c echo.Context) error {
 			Statusbool: false,
 		})
 	}
-
-	//
 
 	const taxRate = 0.07
 	var orderTotal float32
