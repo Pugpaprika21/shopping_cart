@@ -110,6 +110,8 @@ func (ch *categoryHandler) UpdateCategoryByID(c echo.Context) error {
 		})
 	}
 
+	// update Category
+
 	category := models.Category{
 		Name:        body.Name,
 		Description: body.Description,

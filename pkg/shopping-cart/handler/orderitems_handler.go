@@ -110,6 +110,8 @@ func (o *orderItemsHandler) GetOrderItemsByUserID(c echo.Context) error {
 		})
 	}
 
+	//
+
 	const taxRate = 0.07
 	var orderTotal float32
 	var orderTotalWithTax float32
