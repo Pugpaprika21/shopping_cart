@@ -71,7 +71,7 @@ func (ch *categoryHandler) SaveCategory(c echo.Context) error {
 		Statusbool: true,
 	})
 
-	// 444444
+	// eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
 }
 
 func (ch *categoryHandler) GetCategoryByID(c echo.Context) error {
